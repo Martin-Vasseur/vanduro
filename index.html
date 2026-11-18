@@ -1,0 +1,1248 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Vanduro - Commandes</title>
+<!-- Application installable (ecran d'accueil du telephone), utilisable sans reseau -->
+<link rel="icon" type="image/png" href="icon_192.png">
+<link rel="apple-touch-icon" href="icon_192.png">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#0f1720">
+<meta name="apple-mobile-web-app-title" content="Vanduro">
+<style>
+  :root {
+    --bg: #0f1720;
+    --card: #1a2530;
+    --accent: #34d399;
+    --accent-dim: #1f6f57;
+    --off: #3a4552;
+    --text: #e8edf2;
+    --text-dim: #8a97a3;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    min-height: 100vh;
+    background: linear-gradient(160deg, var(--bg), #0a1016);
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    color: var(--text);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+    padding: 32px 16px 60px;
+  }
+  h1 {
+    font-size: 20px;
+    font-weight: 600;
+    letter-spacing: 0.3px;
+    margin: 0;
+    text-align: center;
+  }
+
+  .van-wrap {
+    width: 100%;
+    max-width: 460px;
+    border-radius: 20px;
+    overflow: hidden;
+    background: #060a12;
+  }
+  #vanSvg { width: 100%; height: auto; display: block; }
+
+  [data-zone] { transition: fill .4s ease, opacity .4s ease, filter .4s ease; cursor: pointer; }
+
+  .interior-wall { fill: #10161c; }
+  .interior-wall.on { fill: #fde68a; filter: drop-shadow(0 0 14px #fbbf24); }
+
+  .interior-bulb { fill: #3a4552; }
+  .interior-bulb.on { fill: #fff3c4; filter: drop-shadow(0 0 8px #fbbf24); }
+
+  /* --ext-b (0..1) = luminosite des spots, mise a jour par le script */
+  .ext-glow { opacity: 0; }
+  .ext-glow.on { opacity: calc(0.6 * var(--ext-b, 1)); }
+
+  .ext-bar { fill: #3a4552; }
+  .ext-bar.on { fill: #e0f7ff; filter: drop-shadow(0 0 10px #22d3ee); opacity: calc(0.35 + 0.65 * var(--ext-b, 1)); }
+
+  .pump-tank { fill: #2d6ca6; }
+  .pump-tank.on { fill: #60a5fa; filter: drop-shadow(0 0 10px #3b82f6); }
+
+  .droplet { fill: #3b82f6; opacity: 0; }
+  .droplet.on {
+    animation-name: dropFall;
+    animation-duration: 1.3s;
+    animation-iteration-count: infinite;
+    animation-timing-function: ease-in;
+  }
+  .droplet.on.d2 { animation-delay: .35s; }
+  .droplet.on.d3 { animation-delay: .7s; }
+
+  @keyframes dropFall {
+    0%   { transform: translateY(0); opacity: 0; }
+    30%  { opacity: 0.9; }
+    100% { transform: translateY(12px); opacity: 0; }
+  }
+
+  .fan-housing { fill: none; stroke: #3a4552; }
+  .fan-housing.on { stroke: #c4b5fd; filter: drop-shadow(0 0 8px #a78bfa); }
+
+  .fan-blades { fill: #3a4552; transform-origin: 281px 258px; }
+  .fan-blades.on { fill: #a78bfa; animation: fanSpin 0.8s linear infinite; }
+
+  @keyframes fanSpin {
+    to { transform: rotate(360deg); }
+  }
+
+  .airflow { stroke: #a78bfa; opacity: 0; }
+  .airflow.on {
+    animation-name: airflowFade;
+    animation-duration: 1.1s;
+    animation-iteration-count: infinite;
+    animation-timing-function: ease-in-out;
+  }
+  .airflow.on.a2 { animation-delay: .3s; }
+  .airflow.on.a3 { animation-delay: .6s; }
+
+  @keyframes airflowFade {
+    0%   { opacity: 0; transform: translateX(0); }
+    50%  { opacity: 0.8; }
+    100% { opacity: 0; transform: translateX(10px); }
+  }
+
+  .grid {
+    width: 100%;
+    max-width: 420px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+  }
+  .card {
+    background: var(--card);
+    border-radius: 18px;
+    padding: 16px 10px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    box-shadow: 0 4px 14px rgba(0,0,0,0.35);
+    transition: box-shadow 0.3s ease, transform 0.15s ease;
+  }
+  .card.on { box-shadow: 0 4px 20px rgba(52, 211, 153, 0.2); }
+  .card:active { transform: scale(0.97); }
+  .icon {
+    font-size: 24px;
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 12px;
+    background: var(--off);
+    transition: background 0.3s ease, transform 0.3s ease;
+  }
+  .card.on .icon { background: var(--zone-color-dim, var(--accent-dim)); transform: scale(1.05); }
+  .name { font-size: 13px; font-weight: 500; text-align: center; line-height: 1.25; }
+
+  .switch {
+    position: relative;
+    width: 52px;
+    height: 30px;
+    flex-shrink: 0;
+    border-radius: 999px;
+    background: var(--off);
+    cursor: pointer;
+    transition: background 0.3s ease;
+    border: none;
+    padding: 0;
+  }
+  .switch .knob {
+    position: absolute;
+    top: 3px;
+    left: 3px;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background: #fff;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+    transition: transform 0.28s cubic-bezier(.4,0,.2,1);
+  }
+  .switch.on { background: var(--zone-color, var(--accent)); }
+  .switch.on .knob { transform: translateX(22px); }
+
+  .dimmer {
+    grid-column: 1 / -1;
+    align-items: stretch;
+    gap: 10px;
+    padding: 14px 18px 12px;
+    --zone-color: #22d3ee;
+    transition: opacity 0.3s ease;
+  }
+  .dimmer:active { transform: none; }
+  .dimmer.off { opacity: 0.55; }
+  .dim-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 13px;
+    font-weight: 500;
+  }
+  .dim-pct {
+    font-weight: 700;
+    color: var(--zone-color);
+    font-variant-numeric: tabular-nums;
+  }
+  #extSlider {
+    width: 100%;
+    height: 28px;
+    margin: 0;
+    accent-color: var(--zone-color);
+    cursor: pointer;
+  }
+
+  .sensors {
+    width: 100%;
+    max-width: 420px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+  }
+  .sensor {
+    background: var(--card);
+    border-radius: 14px;
+    padding: 10px 18px;
+    font-size: 14px;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+  }
+  .sensor-icon { font-size: 16px; }
+
+  .footer { margin-top: 4px; font-size: 11px; color: var(--text-dim); text-align: center; }
+
+  .card { position: relative; }
+  .forced-badge {
+    position: absolute;
+    top: 8px;
+    right: 10px;
+    font-size: 9.5px;
+    font-weight: 700;
+    letter-spacing: 0.03em;
+    color: #fb923c;
+    background: rgba(251, 146, 60, 0.15);
+    border: 1px solid rgba(251, 146, 60, 0.4);
+    border-radius: 999px;
+    padding: 2px 7px;
+    cursor: pointer;
+  }
+
+  .gear-btn {
+    position: fixed;
+    top: 16px;
+    left: 16px;
+    width: 40px;
+    height: 40px;
+    border-radius: 12px;
+    background: var(--card);
+    border: none;
+    color: var(--text);
+    font-size: 19px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 10;
+    box-shadow: 0 4px 14px rgba(0,0,0,0.35);
+  }
+  .overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.55);
+    align-items: center;
+    justify-content: center;
+    z-index: 20;
+    padding: 20px;
+  }
+  .overlay:not([hidden]) { display: flex; }
+  .panel {
+    background: var(--card);
+    border-radius: 18px;
+    padding: 20px;
+    width: 100%;
+    max-width: 320px;
+    max-height: 100%;
+    overflow-y: auto;
+  }
+  .panel-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+    font-size: 16px;
+    font-weight: 600;
+  }
+  .close-btn {
+    background: none;
+    border: none;
+    color: var(--text-dim);
+    font-size: 22px;
+    cursor: pointer;
+    line-height: 1;
+    padding: 0;
+  }
+  .field-label {
+    display: block;
+    font-size: 13px;
+    color: var(--text-dim);
+    margin-bottom: 8px;
+  }
+  .panel-section {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    margin: 0 0 10px;
+  }
+  .panel-section + .panel-section,
+  .field-hint + .panel-section { margin-top: 18px; }
+  .field-hint {
+    font-size: 11.5px;
+    color: var(--text-dim);
+    line-height: 1.35;
+    margin: -10px 0 14px;
+  }
+  .panel input[type=number] {
+    width: 100%;
+    padding: 10px 12px;
+    border-radius: 10px;
+    border: 1px solid var(--off);
+    background: #10161e;
+    color: var(--text);
+    font-size: 15px;
+    margin-bottom: 16px;
+    box-sizing: border-box;
+  }
+  .save-btn {
+    width: 100%;
+    padding: 12px;
+    border-radius: 10px;
+    border: none;
+    background: var(--accent);
+    color: #06251b;
+    font-weight: 600;
+    font-size: 14px;
+    cursor: pointer;
+  }
+
+  /* Mise a jour du programme (OTA) */
+  .fw-section {
+    margin-top: 22px;
+    padding-top: 18px;
+    border-top: 1px solid var(--off);
+  }
+  .fw-version {
+    font-size: 12px;
+    color: var(--text-dim);
+    margin: -4px 0 12px;
+  }
+  .file-btn {
+    display: block;
+    padding: 11px 12px;
+    border-radius: 10px;
+    border: 1px dashed var(--off);
+    background: #10161e;
+    color: var(--text-dim);
+    font-size: 13.5px;
+    text-align: center;
+    cursor: pointer;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    margin-bottom: 10px;
+  }
+  .file-btn.chosen { color: var(--text); border-style: solid; }
+  .fw-btn {
+    width: 100%;
+    padding: 11px;
+    border-radius: 10px;
+    border: 1px solid #fb923c;
+    background: transparent;
+    color: #fb923c;
+    font-weight: 600;
+    font-size: 14px;
+    cursor: pointer;
+  }
+  .fw-btn:disabled { opacity: 0.45; cursor: default; }
+  .fw-bar {
+    height: 6px;
+    border-radius: 999px;
+    background: var(--off);
+    overflow: hidden;
+    margin-top: 12px;
+  }
+  .fw-bar span {
+    display: block;
+    height: 100%;
+    width: 0;
+    background: #fb923c;
+    transition: width 0.2s ease;
+  }
+  .fw-status {
+    font-size: 12.5px;
+    line-height: 1.4;
+    margin-top: 8px;
+    color: var(--text-dim);
+  }
+  .fw-status.ok { color: var(--accent); }
+  .fw-status.err { color: #f87171; }
+
+  /* Bandeau de liaison Bluetooth */
+  .link {
+    width: 100%;
+    max-width: 460px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+    background: var(--card);
+    border-radius: 14px;
+    padding: 10px 14px;
+    font-size: 13.5px;
+  }
+  .link-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: #f87171;
+    flex-shrink: 0;
+  }
+  .link[data-state="on"] .link-dot { background: var(--accent); box-shadow: 0 0 8px var(--accent); }
+  .link[data-state="wait"] .link-dot { background: #fbbf24; animation: blink 1s ease-in-out infinite; }
+  @keyframes blink { 50% { opacity: 0.25; } }
+  .link-text { flex: 1; min-width: 140px; }
+  .link-btn {
+    border: 1px solid var(--off);
+    background: transparent;
+    color: var(--text);
+    border-radius: 10px;
+    padding: 7px 12px;
+    font-size: 13px;
+    cursor: pointer;
+  }
+  .link-btn.primary { background: var(--accent); border-color: var(--accent); color: #06251b; font-weight: 600; }
+  /* Sans liaison : commandes grisees */
+  body.offline .van-wrap, body.offline .grid, body.offline .sensors { opacity: 0.45; pointer-events: none; }
+
+  .toast {
+    position: fixed;
+    left: 50%;
+    bottom: 24px;
+    transform: translateX(-50%);
+    max-width: calc(100% - 32px);
+    background: #26323e;
+    color: var(--text);
+    border-radius: 12px;
+    padding: 10px 16px;
+    font-size: 13.5px;
+    box-shadow: 0 6px 20px rgba(0,0,0,0.45);
+    z-index: 30;
+  }
+  #codeInput {
+    width: 100%;
+    padding: 10px 12px;
+    border-radius: 10px;
+    border: 1px solid var(--off);
+    background: #10161e;
+    color: var(--text);
+    font-size: 15px;
+    margin-bottom: 16px;
+    box-sizing: border-box;
+  }
+</style>
+</head>
+
+</head>
+<body>
+  <button id="settingsBtn" class="gear-btn" aria-label="Parametres">&#9881;&#65039;</button>
+
+  <div id="settingsOverlay" class="overlay" hidden>
+    <div class="panel">
+      <div class="panel-header">
+        <span>Param&egrave;tres</span>
+        <button id="closeSettings" class="close-btn">&times;</button>
+      </div>
+      <div class="panel-section">Ventilation</div>
+      <label class="field-label" for="fanOnInput">Seuil d'activation (% d'humidit&eacute;)</label>
+      <input type="number" id="fanOnInput" min="30" max="95" step="1"/>
+
+      <div class="panel-section">Spots ext&eacute;rieurs</div>
+      <label class="field-label" for="extFreqInput">Fr&eacute;quence PWM (Hz)</label>
+      <input type="number" id="extFreqInput" min="100" max="10000" step="50"/>
+      <div class="field-hint">100 &agrave; 10000 Hz. &Agrave; baisser si les spots scintillent ou sifflent.</div>
+      <label class="field-label" for="extMinInput">Luminosit&eacute; minimale (%)</label>
+      <input type="number" id="extMinInput" min="1" max="50" step="1"/>
+      <div class="field-hint">1 &agrave; 50 %. &Agrave; monter si les spots s'&eacute;teignent ou clignotent en bas de course.</div>
+
+      <div class="panel-section">S&eacute;curit&eacute;</div>
+      <label class="field-label" for="codeInput">Code d'appairage Bluetooth</label>
+      <input type="text" id="codeInput" inputmode="numeric" autocomplete="off" maxlength="8"/>
+      <div class="field-hint" id="codeHint"></div>
+
+      <button id="saveSettings" class="save-btn">Enregistrer</button>
+
+      <div class="fw-section">
+        <div class="panel-section">Mise &agrave; jour du programme</div>
+        <div class="fw-version" id="fwVersion">Version --</div>
+        <label class="file-btn" id="fwPick">
+          <input type="file" id="fwFile" accept=".bin" hidden>
+          <span id="fwName">Choisir le fichier .bin&hellip;</span>
+        </label>
+        <button id="fwSend" class="fw-btn" disabled>Installer la mise &agrave; jour</button>
+        <div class="fw-bar" id="fwBar" hidden><span id="fwBarFill"></span></div>
+        <div class="fw-status" id="fwStatus">Fichier &agrave; g&eacute;n&eacute;rer dans l'IDE Arduino : Croquis &gt; Exporter les binaires compil&eacute;s, puis prendre le fichier <b>vanduro.ino.bin</b>. Envoi par Bluetooth : 1 &agrave; 2 minutes.</div>
+      </div>
+    </div>
+  </div>
+
+  <h1>Vanduro &middot; Commandes</h1>
+
+  <div class="link" id="linkBar" data-state="off">
+    <span class="link-dot"></span>
+    <span class="link-text" id="linkText">Van non connect&eacute;</span>
+    <button class="link-btn primary" id="btnConnect">Se connecter</button>
+    <button class="link-btn" id="btnOther" hidden>Autre van&hellip;</button>
+    <button class="link-btn" id="btnDisconnect" hidden>D&eacute;connecter</button>
+  </div>
+
+  <div class="van-wrap">
+    <svg id="vanSvg" viewBox="0 0 480 420" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <linearGradient id="skyGrad" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="#060a12"/>
+          <stop offset="100%" stop-color="#0d1620"/>
+        </linearGradient>
+        <linearGradient id="grassGrad" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="#0f2318"/>
+          <stop offset="100%" stop-color="#173322"/>
+        </linearGradient>
+        <radialGradient id="extGlowGrad" cx="50%" cy="50%" r="50%">
+          <stop offset="0%" stop-color="#22d3ee" stop-opacity="0.6"/>
+          <stop offset="100%" stop-color="#22d3ee" stop-opacity="0"/>
+        </radialGradient>
+      </defs>
+
+      <rect x="0" y="0" width="480" height="420" fill="url(#skyGrad)"/>
+
+      <g fill="#ffffff">
+        <circle cx="20" cy="20" r="1.2" opacity="0.8"/>
+        <circle cx="55" cy="40" r="1" opacity="0.6"/>
+        <circle cx="95" cy="15" r="1.4" opacity="0.9"/>
+        <circle cx="130" cy="35" r="1" opacity="0.6"/>
+        <circle cx="170" cy="55" r="1.2" opacity="0.7"/>
+        <circle cx="210" cy="20" r="1" opacity="0.6"/>
+        <circle cx="250" cy="45" r="1.3" opacity="0.8"/>
+        <circle cx="300" cy="25" r="1" opacity="0.7"/>
+        <circle cx="340" cy="50" r="1.1" opacity="0.6"/>
+        <circle cx="25" cy="60" r="1" opacity="0.5"/>
+        <circle cx="150" cy="10" r="1" opacity="0.6"/>
+        <circle cx="440" cy="70" r="1.2" opacity="0.7"/>
+        <circle cx="60" cy="65" r="1" opacity="0.5"/>
+      </g>
+
+      <circle cx="400" cy="48" r="34" fill="#eef1f4" opacity="0.12"/>
+      <circle cx="400" cy="48" r="20" fill="#eef1f4"/>
+
+      <g fill="#071009">
+        <polygon points="30,75 0,150 60,150"/>
+        <polygon points="95,65 60,150 140,150"/>
+        <polygon points="180,85 140,150 230,150"/>
+        <polygon points="280,70 230,150 330,150"/>
+        <polygon points="370,90 330,150 420,150"/>
+        <polygon points="450,75 420,150 480,150"/>
+      </g>
+
+      <g fill="#0c1811">
+        <polygon points="0,130 -20,185 50,185"/>
+        <polygon points="70,110 20,185 120,185"/>
+        <polygon points="160,135 100,185 220,185"/>
+        <polygon points="260,105 210,185 310,185"/>
+        <polygon points="350,125 300,185 400,185"/>
+        <polygon points="440,115 390,185 480,185"/>
+      </g>
+
+      <rect x="0" y="178" width="480" height="242" fill="url(#grassGrad)"/>
+
+      <g stroke="#2c5236" stroke-width="1.5" stroke-linecap="round" fill="none">
+        <path d="M40,250 l-3,-9 M40,250 l0,-10 M40,250 l3,-9"/>
+        <path d="M440,240 l-3,-9 M440,240 l0,-10 M440,240 l3,-9"/>
+        <path d="M20,320 l-3,-9 M20,320 l0,-10 M20,320 l3,-9"/>
+        <path d="M460,310 l-3,-9 M460,310 l0,-10 M460,310 l3,-9"/>
+        <path d="M15,380 l-3,-9 M15,380 l0,-10 M15,380 l3,-9"/>
+        <path d="M465,390 l-3,-9 M465,390 l0,-10 M465,390 l3,-9"/>
+        <path d="M60,400 l-3,-9 M60,400 l0,-10 M60,400 l3,-9"/>
+        <path d="M420,405 l-3,-9 M420,405 l0,-10 M420,405 l3,-9"/>
+      </g>
+
+      <ellipse cx="240" cy="330" rx="190" ry="45" fill="#20241c" opacity="0.5"/>
+      <ellipse cx="240" cy="340" rx="175" ry="16" fill="#000" opacity="0.35"/>
+
+      <!-- Roues : tranche du pneu avec crampons -->
+      <rect x="138" y="304" width="24" height="56" rx="9" fill="#0a0d10"/>
+      <g stroke="#2a3238" stroke-width="2.5" stroke-linecap="round">
+        <line x1="142" y1="312" x2="158" y2="312"/>
+        <line x1="142" y1="322" x2="158" y2="322"/>
+        <line x1="142" y1="332" x2="158" y2="332"/>
+        <line x1="142" y1="342" x2="158" y2="342"/>
+        <line x1="142" y1="352" x2="158" y2="352"/>
+      </g>
+      <rect x="318" y="304" width="24" height="56" rx="9" fill="#0a0d10"/>
+      <g stroke="#2a3238" stroke-width="2.5" stroke-linecap="round">
+        <line x1="322" y1="312" x2="338" y2="312"/>
+        <line x1="322" y1="322" x2="338" y2="322"/>
+        <line x1="322" y1="332" x2="338" y2="332"/>
+        <line x1="322" y1="342" x2="338" y2="342"/>
+        <line x1="322" y1="352" x2="338" y2="352"/>
+      </g>
+
+      <g transform="translate(67,84) scale(0.72)">
+        <rect x="95" y="20" width="290" height="14" rx="7" fill="#dfe3e8" stroke="#b7bcc3" stroke-width="1.5"/>
+        <rect x="95" y="25" width="30" height="300" rx="10" fill="#dfe3e8" stroke="#b7bcc3" stroke-width="1.5"/>
+        <rect x="355" y="25" width="30" height="300" rx="10" fill="#dfe3e8" stroke="#b7bcc3" stroke-width="1.5"/>
+        <rect x="95" y="302" width="290" height="24" rx="10" fill="#181c20"/>
+
+        <rect x="125" y="34" width="230" height="268" rx="14" fill="#0c1015" stroke="#14181c" stroke-width="6"/>
+        <polygon points="125,34 355,34 321,64 159,64" fill="#1c242d"/>
+        <polygon points="125,34 125,300 159,242 159,64" fill="#141b22"/>
+        <polygon points="355,34 355,300 321,242 321,64" fill="#141b22"/>
+        <polygon points="125,300 355,300 321,242 159,242" fill="#c9b18a"/>
+        <rect class="interior-wall" data-zone="0" x="159" y="64" width="162" height="178" rx="8"/>
+        <rect x="205" y="92" width="70" height="34" rx="6" fill="#05080b" opacity="0.5"/>
+        <rect class="interior-bulb" data-zone="0" x="219" y="72" width="42" height="10" rx="4"/>
+
+        <!-- Reservoir d'eau : niveau visible en permanence -->
+        <rect x="170" y="234" width="58" height="48" rx="6" fill="#161d24" stroke="#3a4552" stroke-width="2"/>
+        <rect class="pump-tank" data-zone="2" x="174" y="242" width="50" height="36" rx="4"/>
+        <rect x="174" y="242" width="50" height="4" rx="2" fill="#7dd3fc" opacity="0.55"/>
+        <circle class="droplet d1" data-zone="2" cx="184" cy="292" r="3"/>
+        <circle class="droplet d2" data-zone="2" cx="199" cy="292" r="3"/>
+        <circle class="droplet d3" data-zone="2" cx="214" cy="292" r="3"/>
+
+        <!-- Ventilation : grille + pales animees, cote oppose au reservoir -->
+        <rect x="252" y="234" width="58" height="48" rx="6" fill="#161d24" stroke="#3a4552" stroke-width="2"/>
+        <rect data-zone="3" x="252" y="234" width="58" height="48" rx="6" fill="transparent"/>
+        <circle class="fan-housing" data-zone="3" cx="281" cy="258" r="18" stroke-width="2.5"/>
+        <g class="fan-blades" data-zone="3">
+          <ellipse cx="281" cy="246" rx="4" ry="10"/>
+          <ellipse cx="281" cy="246" rx="4" ry="10" transform="rotate(120 281 258)"/>
+          <ellipse cx="281" cy="246" rx="4" ry="10" transform="rotate(240 281 258)"/>
+        </g>
+        <circle cx="281" cy="258" r="3" fill="#0c1015"/>
+        <path class="airflow a1" data-zone="3" d="M312,248 q10,-4 20,0" stroke-width="2" fill="none" stroke-linecap="round"/>
+        <path class="airflow a2" data-zone="3" d="M312,258 q10,-4 20,0" stroke-width="2" fill="none" stroke-linecap="round"/>
+        <path class="airflow a3" data-zone="3" d="M312,268 q10,-4 20,0" stroke-width="2" fill="none" stroke-linecap="round"/>
+
+        <!-- Portes : contour blanc carrosserie, suspendues dans le vide au-dela du chassis -->
+        <path d="M115.18,32.13 L29.82,15.87 Q20,14 20,24 L20,310 Q20,320 29.82,318.13 L115.18,301.87 Q125,300 125,290 L125,44 Q125,34 115.18,32.13 Z" fill="#c8a672" stroke="#dfe3e8" stroke-width="4"/>
+        <path d="M364.82,32.13 L450.18,15.87 Q460,14 460,24 L460,310 Q460,320 450.18,318.13 L364.82,301.87 Q355,300 355,290 L355,44 Q355,34 364.82,32.13 Z" fill="#c8a672" stroke="#dfe3e8" stroke-width="4"/>
+
+        <rect x="118" y="36" width="14" height="14" rx="3" fill="#3a2f22" stroke="#241b12" stroke-width="1"/>
+        <rect x="118" y="284" width="14" height="14" rx="3" fill="#3a2f22" stroke="#241b12" stroke-width="1"/>
+        <rect x="348" y="36" width="14" height="14" rx="3" fill="#3a2f22" stroke="#241b12" stroke-width="1"/>
+        <rect x="348" y="284" width="14" height="14" rx="3" fill="#3a2f22" stroke="#241b12" stroke-width="1"/>
+
+        <ellipse class="ext-glow" data-zone="1" cx="240" cy="6" rx="140" ry="20" fill="url(#extGlowGrad)"/>
+        <rect class="ext-bar" data-zone="1" x="205" y="12" width="70" height="10" rx="5"/>
+      </g>
+    </svg>
+  </div>
+
+  <div class="sensors">
+    <div class="sensor"><span class="sensor-icon">&#127777;&#65039;</span><span id="tempVal">--</span>&deg;C</div>
+    <div class="sensor"><span class="sensor-icon">&#128167;</span><span id="humVal">--</span>%</div>
+  </div>
+
+  <div class="grid" id="grid"></div>
+  <div class="footer">Vanduro &middot; ESP32-RELAY04 &middot; Bluetooth</div>
+  <div class="toast" id="toast" hidden></div>
+
+  <!-- Variateur des spots exterieurs : deplace dans la grille, juste sous la 1re rangee -->
+  <div class="card dimmer" id="dimmer">
+    <div class="dim-head">
+      <span>&#128262; Luminosit&eacute; spots ext&eacute;rieurs</span>
+      <span class="dim-pct" id="extPct">--%</span>
+    </div>
+    <input type="range" id="extSlider" min="5" max="100" step="1" value="100" aria-label="Luminosite spots exterieurs">
+  </div>
+
+<script>
+'use strict';
+/* =====================================================================
+   Telecommande Bluetooth du van (Web Bluetooth)
+   Protocole : docs/protocole_ble.md, service "Nordic UART" :
+   commandes texte vers RX, lignes JSON de l'ESP32 sur TX (notifications),
+   fichier de mise a jour en binaire sur OTA.
+   Chrome / Edge sur Android ou ordinateur, page en https (GitHub Pages).
+   ?demo dans l'adresse : van simule dans la page (meme protocole).
+   ===================================================================== */
+const NUS     = '6e400001-b5a3-f393-e0a9-e50e24dcca9e';
+const NUS_RX  = '6e400002-b5a3-f393-e0a9-e50e24dcca9e';
+const NUS_TX  = '6e400003-b5a3-f393-e0a9-e50e24dcca9e';
+const NUS_OTA = '6e400005-b5a3-f393-e0a9-e50e24dcca9e';
+const NAME_PREFIX = 'Vanduro';
+
+const NAMES = ['Eclairage interieur', 'Eclairage exterieur', 'Pompe a eau', 'Ventilation'];
+const ICONS = ['\u{1F4A1}', '\u{1F526}', '\u{1F6B0}', '\u{1F300}'];
+const COLORS     = ['#fbbf24', '#22d3ee', '#3b82f6', '#a78bfa'];
+const COLORS_DIM = ['#6b4a12', '#0f5b66', '#1e3a63', '#4c3575'];
+
+const store = {
+  get(k, d) { try { const v = localStorage.getItem('vanduro:' + k); return v === null ? d : v; } catch (e) { return d; } },
+  set(k, v) { try { localStorage.setItem('vanduro:' + k, v); } catch (e) {} },
+  del(k) { try { localStorage.removeItem('vanduro:' + k); } catch (e) {} },
+};
+
+/* ---------------------------------------------------------------- page */
+const grid = document.getElementById('grid');
+const cards = [];
+
+NAMES.forEach((name, i) => {
+  const card = document.createElement('div');
+  card.className = 'card';
+  card.style.setProperty('--zone-color', COLORS[i]);
+  card.style.setProperty('--zone-color-dim', COLORS_DIM[i]);
+  card.innerHTML = `
+    ${i === 3 ? '<div class="forced-badge" hidden>Forcé</div>' : ''}
+    <div class="icon">${ICONS[i]}</div>
+    <div class="name">${name}</div>
+    <button class="switch"><div class="knob"></div></button>
+  `;
+  card.querySelector('.switch').addEventListener('click', () => toggle(i));
+  if (i === 3) {
+    card.querySelector('.forced-badge').addEventListener('click', (e) => {
+      e.stopPropagation();
+      send('fanauto');
+    });
+  }
+  grid.appendChild(card);
+  cards.push(card);
+  if (i === 1) grid.appendChild(document.getElementById('dimmer'));
+});
+
+document.querySelectorAll('#vanSvg [data-zone]').forEach(el => {
+  el.addEventListener('click', () => toggle(parseInt(el.getAttribute('data-zone'), 10)));
+});
+
+const dimmer = document.getElementById('dimmer');
+const extSlider = document.getElementById('extSlider');
+const extPct = document.getElementById('extPct');
+const vanSvg = document.getElementById('vanSvg');
+let sliderDragging = false;
+
+function showBrightness(pct) {
+  extPct.textContent = pct + '%';
+  vanSvg.style.setProperty('--ext-b', pct / 100);
+}
+
+function render(data) {
+  data.relays.forEach((on, i) => {
+    const card = cards[i];
+    card.classList.toggle('on', on);
+    card.querySelector('.switch').classList.toggle('on', on);
+    document.querySelectorAll(`[data-zone="${i}"]`).forEach(el => el.classList.toggle('on', on));
+  });
+  const badge = cards[3].querySelector('.forced-badge');
+  if (badge) badge.hidden = !data.fanForced;
+
+  dimmer.classList.toggle('off', !data.relays[1]);
+  extSlider.min = data.extMin;
+  // Pas d'ecrasement du curseur pendant que l'utilisateur le deplace
+  if (!sliderDragging) {
+    extSlider.value = data.extBrightness;
+    showBrightness(data.extBrightness);
+  }
+  document.getElementById('tempVal').textContent = data.temp === null ? '--' : data.temp;
+  document.getElementById('humVal').textContent = data.humidity === null ? '--' : data.humidity;
+}
+
+function toggle(i) {
+  if (!L.ready) { toast('Van non connecté'); return; }
+  send('toggle ' + i);
+}
+
+// Curseur : seule la derniere valeur en attente est envoyee (une ecriture Bluetooth a la fois)
+let pendingBrightness = null;
+let sendingBrightness = false;
+async function sendBrightness(v) {
+  pendingBrightness = v;
+  if (sendingBrightness) return;
+  sendingBrightness = true;
+  while (pendingBrightness !== null) {
+    const val = pendingBrightness;
+    pendingBrightness = null;
+    try { await send('bri ' + val); } catch (e) {}
+  }
+  sendingBrightness = false;
+}
+
+extSlider.addEventListener('input', () => {
+  sliderDragging = true;
+  showBrightness(extSlider.value);
+  sendBrightness(extSlider.value);
+});
+extSlider.addEventListener('change', () => {
+  sliderDragging = false;
+  sendBrightness(extSlider.value);
+});
+
+let toastTimer = 0;
+function toast(msg, ms = 3500) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.hidden = false;
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => { t.hidden = true; }, ms);
+}
+
+/* ---------------------------------------------------------------- liaison Bluetooth */
+const L = {
+  dev: null, rx: null, ota: null,
+  conn: false,     // liaison GATT etablie
+  ready: false,    // session ouverte (code d'appairage donne si besoin)
+  want: false,     // l'utilisateur veut rester connecte : reconnexion automatique
+  seeking: '',     // nom du van recherche
+  hello: null, authTries: 0,
+  buf: [], q: Promise.resolve(), waiters: [], demo: null,
+};
+const enc = new TextEncoder(), dec = new TextDecoder();
+
+/** Ecriture d'une commande : les ecritures Bluetooth sont mises en file (une seule a la fois). */
+function send(cmd) {
+  if (L.demo) { L.demo.command(cmd); return Promise.resolve(); }
+  const p = L.q.then(() => {
+    if (!L.rx) throw new Error('non connecté');
+    return L.rx.writeValue(enc.encode(cmd + '\n'));
+  });
+  L.q = p.catch(() => {});
+  return p;
+}
+
+/** Attend la prochaine ligne de l'ESP32 de type r (et qui verifie test), avec delai maximal. */
+function waitFor(r, ms = 5000, test = () => true) {
+  return new Promise((resolve, reject) => {
+    const w = { r, test, resolve, timer: 0 };
+    w.timer = setTimeout(() => { L.waiters = L.waiters.filter(x => x !== w); reject(new Error('pas de réponse du van')); }, ms);
+    L.waiters.push(w);
+  });
+}
+
+function onBytes(u8) {
+  for (const b of u8) {
+    if (b === 10) {
+      const line = dec.decode(new Uint8Array(L.buf)).trim();
+      L.buf = [];
+      if (line) onLine(line);
+    } else if (L.buf.length < 4096) L.buf.push(b);
+  }
+}
+
+function onLine(line) {
+  let m;
+  try { m = JSON.parse(line); } catch (e) { return; }
+  for (const w of [...L.waiters]) {
+    if (w.r === m.r && w.test(m)) {
+      clearTimeout(w.timer);
+      L.waiters = L.waiters.filter(x => x !== w);
+      w.resolve(m);
+    }
+  }
+  if (m.r === 'hello') onHello(m);
+  else if (m.r === 'auth') onAuth(m);
+  else if (m.r === 'state') render(m);
+  else if (m.r === 'settings') fillSettings(m);
+  else if (m.ok === false && m.m && m.r !== 'ota') toast('Van : ' + m.m);
+}
+
+const codeKey = () => 'code:' + (L.dev ? L.dev.id : 'demo');
+
+function onHello(m) {
+  L.hello = m;
+  L.authTries = 0;
+  if (m.auth) askCode(false);
+  else sessionReady();
+}
+
+function askCode(wrong) {
+  const saved = store.get(codeKey(), '');
+  if (saved && !wrong) { send('auth ' + saved); return; }
+  if (wrong) store.del(codeKey());
+  const c = prompt((wrong ? 'Code faux. ' : '') + 'Code d\'appairage du van (4 à 8 chiffres) :', '');
+  if (c === null) { disconnect(); return; }
+  L.pendingCode = c.trim();
+  send('auth ' + L.pendingCode);
+}
+
+function onAuth(m) {
+  if (m.ok) {
+    if (L.pendingCode) store.set(codeKey(), L.pendingCode);
+    L.pendingCode = '';
+    sessionReady();
+  } else if (++L.authTries < 3) {
+    askCode(true);
+  } else {
+    toast('Code refusé 3 fois : le van a coupé la liaison.', 6000);
+    L.want = false;
+  }
+}
+
+function sessionReady() {
+  L.ready = true;
+  setLinkUi();
+  send('state');
+  if (afterUpdate) {
+    afterUpdate = false;
+    send('settings');
+    waitFor('settings', 5000).then(s => {
+      setFwStatus('Mise à jour terminée ✔ Version installée : ' + s.version, 'ok');
+    }).catch(() => {});
+  }
+}
+
+/** Fenetre de choix du navigateur (premiere fois, ou autre van). */
+async function chooseDevice() {
+  if (!navigator.bluetooth) { toast('Bluetooth indisponible dans ce navigateur : utiliser Chrome ou Edge (Android, ordinateur), page en https.', 7000); return; }
+  try {
+    const dev = await navigator.bluetooth.requestDevice({ filters: [{ namePrefix: NAME_PREFIX }, { services: [NUS] }], optionalServices: [NUS] });
+    useDevice(dev);
+    L.want = true;
+    await openLink();
+    store.set('lastDev', dev.id);
+  } catch (e) {
+    if (e && e.name !== 'NotFoundError') toast('Connexion impossible : ' + e.message + '. Rapprocher le téléphone du van, puis réessayer.', 6000);
+  }
+}
+
+function useDevice(dev) {
+  L.dev = dev;
+  if (!dev._vanListen) { dev.addEventListener('gattserverdisconnected', onDisconnect); dev._vanListen = true; }
+}
+
+/* Reconnexion SANS la fenetre de choix : le navigateur garde l'autorisation d'un van deja choisi sur ce site
+   (navigator.bluetooth.getDevices, Chrome ; option "Web Bluetooth new permissions backend" sur Android).
+   On attend que le van emette (watchAdvertisements) avant de se connecter ; sinon tentative directe. */
+async function knownDevices() {
+  if (!navigator.bluetooth || !navigator.bluetooth.getDevices) return [];
+  try {
+    const last = store.get('lastDev', '');
+    return (await navigator.bluetooth.getDevices()).filter(d => (d.name || '').startsWith(NAME_PREFIX))
+      .sort((a, b) => (b.id === last) - (a.id === last));
+  } catch (e) { return []; }
+}
+
+async function reconnect(dev, waitMs = 20000) {
+  if (L.conn || L.demo || L.seeking) return false;
+  L.seeking = dev.name || NAME_PREFIX;
+  setLinkUi();
+  let ok = false;
+  try {
+    if (dev.watchAdvertisements) {
+      const ac = new AbortController();
+      const seen = new Promise(res => {
+        dev.addEventListener('advertisementreceived', () => res(true), { once: true });
+        setTimeout(() => res(false), waitMs);
+      });
+      let watching = false;
+      try { await dev.watchAdvertisements({ signal: ac.signal }); watching = true; } catch (e) { /* tentative directe */ }
+      const inRange = watching ? await seen : true;
+      ac.abort();
+      if (!inRange || L.conn || L.demo) return false;
+    }
+    useDevice(dev);
+    L.want = true;
+    await openLink();
+    store.set('lastDev', dev.id);
+    ok = true;
+  } catch (e) {
+    L.want = false;
+  } finally {
+    L.seeking = '';
+    setLinkUi();
+  }
+  return ok;
+}
+
+async function connectKnownOrChoose() {
+  const known = await knownDevices();
+  if (known.length && await reconnect(known[0], 8000)) return;
+  if (!L.conn) chooseDevice();
+}
+
+async function openLink() {
+  L.conn = false; L.ready = false; L.hello = null;
+  setLinkUi();
+  const srv = await L.dev.gatt.connect();
+  const svc = await srv.getPrimaryService(NUS);
+  L.rx = await svc.getCharacteristic(NUS_RX);
+  L.ota = await svc.getCharacteristic(NUS_OTA);
+  const tx = await svc.getCharacteristic(NUS_TX);
+  // le navigateur peut redonner les memes objets a la reconnexion : un seul ecouteur
+  if (!tx._vanListen) { tx.addEventListener('characteristicvaluechanged', e => onBytes(new Uint8Array(e.target.value.buffer))); tx._vanListen = true; }
+  await tx.startNotifications();
+  L.buf = [];
+  L.conn = true;
+  setLinkUi();
+  await send('hello');
+}
+
+function onDisconnect() {
+  L.conn = false; L.ready = false; L.rx = null; L.ota = null;
+  setLinkUi();
+  if (!L.want) return;
+  const retry = async (n) => {
+    if (!L.want || L.conn) return;
+    try { await openLink(); } catch (e) { setTimeout(() => retry(n + 1), Math.min(10000, 2000 + n * 1000)); }
+  };
+  setTimeout(() => retry(0), 1000);
+}
+
+function disconnect() {
+  L.want = false;
+  if (L.demo) { L.demo.stop(); L.demo = null; L.conn = false; L.ready = false; setLinkUi(); return; }
+  if (L.dev && L.dev.gatt.connected) L.dev.gatt.disconnect();
+}
+
+/* Bandeau de liaison */
+function setLinkUi() {
+  const bar = document.getElementById('linkBar');
+  const txt = document.getElementById('linkText');
+  const name = (L.hello && L.hello.n) || (L.dev && L.dev.name) || NAME_PREFIX;
+  let state = 'off';
+  if (L.ready) { state = 'on'; txt.textContent = (L.demo ? 'Démo : ' : 'Connecté à ') + name; }
+  else if (L.seeking) { state = 'wait'; txt.textContent = 'Recherche de ' + L.seeking + '…'; }
+  else if (L.conn) { state = 'wait'; txt.textContent = 'Ouverture de la session…'; }
+  else if (L.want) { state = 'wait'; txt.textContent = 'Liaison perdue, reconnexion…'; }
+  else { txt.textContent = navigator.bluetooth || L.demo ? 'Van non connecté' : 'Bluetooth indisponible dans ce navigateur'; }
+  bar.dataset.state = state;
+  document.body.classList.toggle('offline', !L.ready);
+  document.getElementById('btnConnect').hidden = L.conn || !!L.seeking || L.want;
+  document.getElementById('btnOther').hidden = L.conn || !!L.seeking || L.want || !L.dev;
+  document.getElementById('btnDisconnect').hidden = !(L.conn || L.want || L.seeking);
+}
+
+document.getElementById('btnConnect').addEventListener('click', () => {
+  if (L.dev) { L.want = true; reconnect(L.dev, 8000).then(ok => { if (!ok) chooseDevice(); }); }
+  else connectKnownOrChoose();
+});
+document.getElementById('btnOther').addEventListener('click', chooseDevice);
+document.getElementById('btnDisconnect').addEventListener('click', disconnect);
+
+/* ---------------------------------------------------------------- parametres */
+const settingsBtn = document.getElementById('settingsBtn');
+const settingsOverlay = document.getElementById('settingsOverlay');
+const fanOnInput = document.getElementById('fanOnInput');
+const extFreqInput = document.getElementById('extFreqInput');
+const extMinInput = document.getElementById('extMinInput');
+const codeInput = document.getElementById('codeInput');
+const codeHint = document.getElementById('codeHint');
+let codeIsSet = false;
+
+function fillSettings(s) {
+  fanOnInput.value = s.fanOnHumidity;
+  extFreqInput.value = s.extFreq;
+  extMinInput.value = s.extMin;
+  codeIsSet = !!s.code;
+  codeInput.value = '';
+  codeInput.placeholder = codeIsSet ? 'inchangé' : 'aucun';
+  codeHint.innerHTML = codeIsSet
+    ? 'Un code est réglé. Saisir un nouveau code pour le changer, ou <b>0</b> pour le supprimer.'
+    : 'Aucun code : tout téléphone à portée peut piloter le van. 4 à 8 chiffres conseillés.';
+  fwVersion.textContent = 'Version installée : ' + s.version;
+}
+
+async function openSettings() {
+  if (!L.ready) { toast('Van non connecté'); return; }
+  try {
+    const s = waitFor('settings');
+    await send('settings');
+    await s;
+    settingsOverlay.hidden = false;
+  } catch (e) { toast('Paramètres indisponibles : ' + e.message); }
+}
+
+function closeSettingsPanel() {
+  if (!updating) settingsOverlay.hidden = true; // ouvert tant qu'une mise a jour est en cours
+}
+
+settingsBtn.addEventListener('click', openSettings);
+document.getElementById('closeSettings').addEventListener('click', closeSettingsPanel);
+settingsOverlay.addEventListener('click', (e) => { if (e.target === settingsOverlay) closeSettingsPanel(); });
+
+document.getElementById('saveSettings').addEventListener('click', async () => {
+  const code = codeInput.value.trim();
+  if (code && code !== '0' && !/^\d{4,8}$/.test(code)) { toast('Code : 4 à 8 chiffres'); return; }
+  try {
+    await send('set fanOn ' + fanOnInput.value);
+    await send('set extFreq ' + extFreqInput.value);
+    await send('set extMin ' + extMinInput.value);
+    if (code) {
+      await send('set code ' + (code === '0' ? 'none' : code));
+      if (code === '0') store.del(codeKey()); else store.set(codeKey(), code);
+    }
+    settingsOverlay.hidden = true;
+    toast('Paramètres enregistrés');
+  } catch (e) { toast('Échec de l\'enregistrement : ' + e.message); }
+});
+
+/* ---------------------------------------------------------------- mise a jour du programme */
+const fwVersion = document.getElementById('fwVersion');
+const fwPick = document.getElementById('fwPick');
+const fwFile = document.getElementById('fwFile');
+const fwName = document.getElementById('fwName');
+const fwSend = document.getElementById('fwSend');
+const fwBar = document.getElementById('fwBar');
+const fwBarFill = document.getElementById('fwBarFill');
+const fwStatus = document.getElementById('fwStatus');
+let updating = false;
+let afterUpdate = false;
+
+function setFwStatus(html, kind) {
+  fwStatus.innerHTML = html;
+  fwStatus.className = 'fw-status' + (kind ? ' ' + kind : '');
+}
+
+function setFwProgress(ratio) {
+  fwBar.hidden = false;
+  fwBarFill.style.width = Math.round(ratio * 100) + '%';
+}
+
+fwFile.addEventListener('change', () => {
+  const f = fwFile.files[0];
+  fwPick.classList.toggle('chosen', !!f);
+  fwName.textContent = f ? `${f.name} (${Math.round(f.size / 1024)} Ko)` : 'Choisir le fichier .bin…';
+  fwSend.disabled = !f;
+  fwBar.hidden = true;
+  if (!f) return;
+  // Seul le binaire de l'application convient (pas le merged / bootloader / partitions)
+  if (!/\.bin$/i.test(f.name) || /merged|bootloader|partitions/i.test(f.name)) {
+    setFwStatus('Ce n\'est pas le bon fichier : prends celui qui se termine par <b>.ino.bin</b>.', 'err');
+    fwSend.disabled = true;
+  } else {
+    setFwStatus('Prêt à installer.');
+  }
+});
+
+fwSend.addEventListener('click', async () => {
+  const f = fwFile.files[0];
+  if (!f || !L.ready) return;
+  if (!confirm(`Installer ${f.name} ?\n\nGarder le téléphone près du van et l'écran allumé pendant l'envoi (environ 1 à 2 minutes). L'ESP32 redémarrera ensuite : les relais repartiront éteints.`)) return;
+
+  updating = true;
+  fwSend.disabled = true;
+  fwPick.style.pointerEvents = 'none';
+  setFwProgress(0);
+  setFwStatus('Préparation…');
+  let wake = null;
+  try { wake = await navigator.wakeLock.request('screen'); } catch (e) {} // l'ecran ne doit pas s'eteindre
+
+  let failed = null;
+  const onFail = waitFor('ota', 600000, m => m.ok === false).then(m => { failed = m.m || 'erreur'; }).catch(() => {});
+  try {
+    const data = new Uint8Array(await f.arrayBuffer());
+    const begin = waitFor('ota', 10000, m => m.st === 'begin' || m.ok === false);
+    await send('ota begin ' + data.length);
+    const b = await begin;
+    if (b.ok === false) throw new Error(b.m);
+    const chunk = b.chunk || 512;
+    const t0 = Date.now();
+    for (let off = 0; off < data.length; off += chunk) {
+      if (failed) throw new Error(failed);
+      if (!L.ready) throw new Error('liaison Bluetooth perdue');
+      await otaWrite(data.subarray(off, Math.min(off + chunk, data.length)));
+      const done = Math.min(off + chunk, data.length), s = (Date.now() - t0) / 1000;
+      setFwProgress(done / data.length);
+      if (done % (chunk * 8) === 0 || done === data.length) {
+        const rate = done / Math.max(s, 0.1), left = Math.round((data.length - done) / rate);
+        setFwStatus(`Envoi… ${Math.round(done / data.length * 100)} % (${(rate / 1024).toFixed(1)} Ko/s, encore ${left} s)`);
+      }
+    }
+    setFwStatus('Vérification par l\'ESP32…');
+    const end = waitFor('ota', 30000, m => m.st === 'done' || m.ok === false);
+    await send('ota end');
+    const e = await end;
+    if (e.ok === false) throw new Error(e.m);
+    afterUpdate = true;
+    setFwStatus('Mise à jour installée ✔ Redémarrage de l\'ESP32 puis reconnexion…', 'ok');
+  } catch (e) {
+    try { if (L.ready) await send('ota abort'); } catch (x) {}
+    setFwStatus('Échec : ' + (failed || e.message) + '. L\'ancien programme est conservé.', 'err');
+  } finally {
+    updating = false;
+    fwSend.disabled = false;
+    fwPick.style.pointerEvents = '';
+    if (wake) wake.release().catch(() => {});
+    void onFail;
+  }
+});
+
+/** Un morceau du fichier, ecriture avec accuse de reception (dans la meme file que les commandes). */
+function otaWrite(bytes) {
+  if (L.demo) return L.demo.ota(bytes);
+  const p = L.q.then(() => {
+    if (!L.ota) throw new Error('liaison Bluetooth perdue');
+    return L.ota.writeValueWithResponse(bytes);
+  });
+  L.q = p.catch(() => {});
+  return p;
+}
+
+/* ---------------------------------------------------------------- mode demo (?demo) */
+function startDemo() {
+  const st = { relays: [false, true, false, false], fanForced: false, extBrightness: 60, extMin: 5, temp: 19.4, humidity: 61.2 };
+  const cfg = { fanOnHumidity: 65, extFreq: 1000, extMin: 5, code: false, version: '8.0.0 (démo)' };
+  let otaSize = 0, otaGot = 0;
+  const emit = (o) => setTimeout(() => onLine(JSON.stringify(o)), 30);
+  const push = () => emit({ r: 'state', ...st });
+  const timer = setInterval(() => { st.temp = +(st.temp + (Math.random() - 0.5) * 0.2).toFixed(1); push(); }, 3000);
+  L.demo = {
+    stop() { clearInterval(timer); },
+    command(line) {
+      const [cmd, a, b] = line.split(' ');
+      if (cmd === 'hello') emit({ r: 'hello', ok: true, pv: 1, fw: cfg.version, n: 'Vanduro (démo)', mtu: 517, auth: 0 });
+      else if (cmd === 'state') push();
+      else if (cmd === 'toggle') { const i = +a; st.relays[i] = !st.relays[i]; if (i === 3) st.fanForced = true; push(); }
+      else if (cmd === 'bri') { st.extBrightness = Math.max(st.extMin, +a); st.relays[1] = true; push(); }
+      else if (cmd === 'fanauto') { st.fanForced = false; push(); }
+      else if (cmd === 'settings') emit({ r: 'settings', ...cfg });
+      else if (cmd === 'set') {
+        if (a === 'fanOn') cfg.fanOnHumidity = +b;
+        if (a === 'extFreq') cfg.extFreq = +b;
+        if (a === 'extMin') { cfg.extMin = st.extMin = +b; st.extBrightness = Math.max(st.extBrightness, st.extMin); push(); }
+        if (a === 'code') cfg.code = b !== 'none';
+        emit({ r: 'settings', ...cfg });
+      } else if (cmd === 'ota') {
+        if (a === 'begin') { otaSize = +b; otaGot = 0; emit({ r: 'ota', ok: true, st: 'begin', chunk: 512 }); }
+        else if (a === 'end') emit(otaGot === otaSize ? { r: 'ota', ok: true, st: 'done' } : { r: 'ota', ok: false, m: 'fichier incomplet' });
+      }
+    },
+    ota(bytes) { otaGot += bytes.length; return new Promise(r => setTimeout(r, 2)); },
+  };
+  L.conn = true;
+  L.demo.command('hello');
+}
+
+/* ---------------------------------------------------------------- demarrage */
+if ('serviceWorker' in navigator && location.protocol === 'https:') {
+  navigator.serviceWorker.register('sw.js').catch(() => {});
+}
+setLinkUi();
+if (new URLSearchParams(location.search).has('demo')) {
+  startDemo();
+} else {
+  // Reconnexion automatique au dernier van autorise, sans fenetre de choix
+  knownDevices().then(list => { if (list.length) reconnect(list[0]); });
+}
+</script>
+</body>
+</html>
